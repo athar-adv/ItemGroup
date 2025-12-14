@@ -64,6 +64,8 @@ function index:free()
 	for _, item in items do
 		cleanup_handler(item)
 	end
+	table.clear(items)
+	
 	for _, child: any in children do
 		child:free()
 	end

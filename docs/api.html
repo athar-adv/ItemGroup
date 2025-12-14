@@ -3,8 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>item-group</title>
-        <meta name="robots" content="noindex">
+        <title>API - item-group</title>
 
 
         <!-- Custom HTML head -->
@@ -176,251 +175,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>ItemGroup is a Luau utility for managing collections of items that need cleanup. It's particularly useful for managing Roblox connections, instances, and custom cleanup callbacks with automatic lifecycle management.</p>
-<hr />
-<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
-<h3 id="creating-an-itemgroup"><a class="header" href="#creating-an-itemgroup">Creating an ItemGroup</a></h3>
-<p>Create an ItemGroup by specifying a cleanup handler:</p>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
--- For RBXScriptConnections
-local connections = ItemGroup.create(cleanup.disconnect)
-
--- For Instances
-local instances = ItemGroup.create(cleanup.destroy)
-
--- For custom cleanup functions
-local callbacks = ItemGroup.create(cleanup.call)
-</code></pre>
-<h3 id="adding-items"><a class="header" href="#adding-items">Adding Items</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-local connections = ItemGroup.create(cleanup.disconnect)
-
--- Add a single connection
-local conn = workspace.ChildAdded:Connect(function(child)
-	print("Child added:", child.Name)
-end)
-connections:add(conn)
-
--- Add multiple connections at once
-local conn1 = workspace.ChildRemoved:Connect(handler1)
-local conn2 = game.Players.PlayerAdded:Connect(handler2)
-connections:add_many({conn1, conn2})
-</code></pre>
-<h3 id="cleaning-up"><a class="header" href="#cleaning-up">Cleaning Up</a></h3>
-<pre><code class="language-luau">-- Clean up all items and children
-connections:free()
--- All connections are now disconnected
-</code></pre>
-<hr />
-<h2 id="common-patterns"><a class="header" href="#common-patterns">Common Patterns</a></h2>
-<h3 id="managing-component-lifecycle"><a class="header" href="#managing-component-lifecycle">Managing Component Lifecycle</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-local MyComponent = {}
-MyComponent.__index = MyComponent
-
-function MyComponent.new()
-	local self = setmetatable({}, MyComponent)
-	self._cleanup = ItemGroup.create(cleanup.disconnect)
-	
-	-- Add connections
-	self._cleanup:add(workspace.ChildAdded:Connect(function(child)
-		self:onChildAdded(child)
-	end))
-	
-	return self
-end
-
-function MyComponent:destroy()
-	self._cleanup:free() -- Disconnects all connections
-end
-</code></pre>
-<h3 id="mixed-resource-types-with-extend"><a class="header" href="#mixed-resource-types-with-extend">Mixed Resource Types with <code>extend()</code></a></h3>
-<p>When you need to manage different types of resources, use <code>extend()</code> to create child groups:</p>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-
-local connections = ItemGroup.create(cleanup.disconnect)
-
--- Create child group for instances
-local instances = connections:extend(cleanup.destroy)
-
--- Create child group for custom callbacks
-local callbacks = connections:extend(cleanup.call)
-
--- Add different resource types
-connections:add(workspace.ChildAdded:Connect(handler))
-instances:add(Instance.new("Part"))
-callbacks:add(function()
-	print("Custom cleanup!")
-end)
-
--- Free everything at once
-connections:free()
--- This cleans up:
--- 1. All connections in the main group
--- 2. All instances in the child group
--- 3. All callbacks in the callback group
-</code></pre>
-<h3 id="scoped-cleanup-with-disconnect-functions"><a class="header" href="#scoped-cleanup-with-disconnect-functions">Scoped Cleanup with Disconnect Functions</a></h3>
-<p>The <code>add()</code> and <code>add_many()</code> methods return disconnect functions for granular control:</p>
-<pre><code class="language-luau">local group = ItemGroup.create(ItemGroup.cleanup.disconnect)
-
--- Add a temporary connection
-local disconnect = group:add(workspace.ChildAdded:Connect(handler))
-
--- Later, remove just this connection
-disconnect()
--- The connection is removed from the group (but other items remain)
--- This means the connection will no longer be cleaned up when group:free() is called
-</code></pre>
-<h3 id="temporary-event-listening"><a class="header" href="#temporary-event-listening">Temporary Event Listening</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-local connections = ItemGroup.create(cleanup.disconnect)
-
-local function setupTemporaryListeners()
-	connections:add_many({
-		workspace.ChildAdded:Connect(handler1),
-		workspace.ChildRemoved:Connect(handler2),
-	})
-	
-	task.delay(10, connections.free, connections) -- After 10 seconds, free everything
-end
-</code></pre>
-<hr />
-<h2 id="advanced-usage"><a class="header" href="#advanced-usage">Advanced Usage</a></h2>
-<h3 id="nested-resource-management"><a class="header" href="#nested-resource-management">Nested Resource Management</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-local root = ItemGroup.create(cleanup.call)
-
--- Create subsystems with their own cleanup
-local networkCleanup = root:extend(cleanup.disconnect)
-local uiCleanup = root:extend(cleanup.destroy)
-local timerCleanup = root:extend(cleanup.call)
-
--- Each subsystem manages its own resources
-networkCleanup:add(replicatedStorage.RemoteEvent.OnClientEvent:Connect(handler))
-uiCleanup:add(screenGui)
-timerCleanup:add(function()
-	-- Cancel timers or other cleanup
-end)
-
--- Free everything with one call
-root:free()
-</code></pre>
-<h3 id="pre-populating-with-initial-items"><a class="header" href="#pre-populating-with-initial-items">Pre-populating with Initial Items</a></h3>
-<pre><code class="language-luau">local existingConnections = {conn1, conn2, conn3}
-
--- Create group with initial items
-local group = ItemGroup.create(ItemGroup.cleanup.disconnect, existingConnections)
-
--- All three connections are already in the group
-group:free() -- Disconnects conn1, conn2, and conn3
-</code></pre>
-<h3 id="custom-cleanup-handlers"><a class="header" href="#custom-cleanup-handlers">Custom Cleanup Handlers</a></h3>
-<pre><code class="language-luau">-- Define a custom cleanup handler
-local function cleanupCustomResource(resource)
-	resource:shutdown()
-	resource:release()
-end
-
--- Use it with ItemGroup
-local resources = ItemGroup.create(cleanupCustomResource)
-resources:add(myCustomResource)
-resources:free() -- Calls cleanupCustomResource(myCustomResource)
-</code></pre>
-<h3 id="managing-game-state"><a class="header" href="#managing-game-state">Managing Game State</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.cleanup
-local GameState = {}
-
-function GameState.new()
-	local self = {}
-	self._cleanup = ItemGroup.create(cleanup.disconnect)
-	self._instances = self._cleanup:extend(cleanup.destroy)
-	
-	-- Setup connections
-	self._cleanup:add(game.Players.PlayerAdded:Connect(function(player)
-		self:onPlayerJoined(player)
-	end))
-	
-	-- Track instances
-	local leaderboard = Instance.new("ScreenGui")
-	self._instances:add(leaderboard)
-	
-	return self
-end
-
-function GameState:cleanup()
-	self._cleanup:free() -- Cleans up connections and instances
-end
-</code></pre>
-<hr />
-<h2 id="best-practices"><a class="header" href="#best-practices">Best Practices</a></h2>
-<ol>
-<li>
-<p><strong>Use specific cleanup handlers</strong>: Choose the appropriate cleanup handler for your resource type</p>
-<ul>
-<li><code>cleanup.disconnect</code> for connections</li>
-<li><code>cleanup.destroy</code> for instances</li>
-<li><code>cleanup.call</code> for functions</li>
-<li>If none of these fit your resource type, make your own using a custom callback!</li>
-</ul>
-</li>
-<li>
-<p><strong>Organize by resource type</strong>: Use <code>extend()</code> to create separate groups for different resource types</p>
-</li>
-<li>
-<p><strong>Store at component/object level</strong>: Keep ItemGroups as instance variables for automatic cleanup in <code>:destroy()</code> methods</p>
-</li>
-<li>
-<p><strong>Free on cleanup</strong>: Always call <code>free()</code> in your component's destructor or cleanup method</p>
-</li>
-<li>
-<p><strong>Use disconnect functions sparingly</strong>: Only use the returned disconnect functions when you need to remove specific items before the full cleanup</p>
-</li>
-<li>
-<p><strong>Avoid manual item management</strong>: Let ItemGroup handle the lifecycle instead of manually tracking arrays</p>
-</li>
-</ol>
-<hr />
-<h2 id="common-pitfalls"><a class="header" href="#common-pitfalls">Common Pitfalls</a></h2>
-<h3 id="-forgetting-to-call-free"><a class="header" href="#-forgetting-to-call-free">❌ Forgetting to call <code>free()</code></a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.create(ItemGroup.cleanup.disconnect)
-cleanup:add(connection)
--- Memory leak: connection is never disconnected
-</code></pre>
-<h3 id="-always-cleanup"><a class="header" href="#-always-cleanup">✅ Always cleanup</a></h3>
-<pre><code class="language-luau">local cleanup = ItemGroup.create(ItemGroup.cleanup.disconnect)
-cleanup:add(connection)
-cleanup:free() -- Properly cleaned up
-</code></pre>
-<h3 id="-wrong-cleanup-handler"><a class="header" href="#-wrong-cleanup-handler">❌ Wrong cleanup handler</a></h3>
-<pre><code class="language-luau">local instances = ItemGroup.create(ItemGroup.cleanup.disconnect)
-instances:add(Instance.new("Part")) -- Won't destroy the part!
-</code></pre>
-<h3 id="-correct-cleanup-handler"><a class="header" href="#-correct-cleanup-handler">✅ Correct cleanup handler</a></h3>
-<pre><code class="language-luau">local instances = ItemGroup.create(ItemGroup.cleanup.destroy)
-instances:add(Instance.new("Part")) -- Part will be destroyed
-</code></pre>
-<hr />
-<h2 id="type-safety"><a class="header" href="#type-safety">Type Safety</a></h2>
-<p>ItemGroup is fully typed with Luau's <code>--!strict</code> mode:</p>
-<pre><code class="language-luau">-- Type-safe usage
-local connections: ItemGroup.ItemGroup&lt;RBXScriptConnection&gt; = 
-	ItemGroup.create(ItemGroup.cleanup.disconnect)
-
--- TypeScript-like generic inference
-local cleanup = ItemGroup.create(ItemGroup.cleanup.call) -- ItemGroup&lt;() -&gt; ()&gt;
-</code></pre>
-<hr />
-<h2 id="performance-considerations"><a class="header" href="#performance-considerations">Performance Considerations</a></h2>
-<ul>
-<li><strong>Adding items</strong>: O(1) amortized time</li>
-<li><strong>Removing items</strong>: O(n) where n is the number of items in the group</li>
-<li><strong>Freeing</strong>: O(n + m) where n is items and m is children</li>
-<li><strong>Memory</strong>: Minimal overhead per item (just array storage)</li>
-</ul>
-<p>For most use cases, ItemGroup's performance is negligible compared to the resources it manages.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="itemgroup-api-reference"><a class="header" href="#itemgroup-api-reference">ItemGroup API Reference</a></h1>
+                        <h1 id="itemgroup-api-reference"><a class="header" href="#itemgroup-api-reference">ItemGroup API Reference</a></h1>
 <h2 id="types"><a class="header" href="#types">Types</a></h2>
 <h3 id="disconnect"><a class="header" href="#disconnect"><code>Disconnect</code></a></h3>
 <pre><code class="language-luau">export type Disconnect = () -&gt; ()
@@ -580,6 +335,9 @@ end)
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
 
 
                         <div style="clear: both"></div>
@@ -588,6 +346,9 @@ end)
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
 
             </nav>
 
@@ -611,11 +372,6 @@ end)
 
         <!-- Custom JS scripts -->
 
-        <script>
-        window.addEventListener('load', function() {
-            window.setTimeout(window.print, 100);
-        });
-        </script>
 
 
     </div>

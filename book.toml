@@ -1,0 +1,8 @@
+[book]
+authors = ["athar_adv"]
+language = "en"
+src = "docs_md"
+title = "item-group"
+
+[build]
+build-dir = docs

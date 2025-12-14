@@ -1,0 +1,13 @@
+[package]
+name = "athar-adv/item-group"
+version = "1.0.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+license = "MIT"
+authors = ["athar_adv"]
+exclude = ["rokit.toml"]
+include = ["src", "default.project.json", "LICENSE"]
+homepage = "https://athar-adv.github.io/ItemGroup"
+repository = "https://github.com/athar-adv/ItemGroup"
+
+[dependencies]

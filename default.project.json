@@ -1,0 +1,6 @@
+{
+	"name": "item-group",
+	"tree": {
+		"$path": "src"
+	}
+}

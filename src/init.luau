@@ -5,7 +5,7 @@ export type Disconnect = () -> ()
 local create
 local __extend
 local __children
-type ItemGroup<T = any> = {
+export type ItemGroup<T = any> = {
 	add: (ItemGroup<T>, item: T) -> Disconnect,
 	add_many: (ItemGroup<T>, items: {T}) -> Disconnect,
 	free: (ItemGroup<T>) -> (),
@@ -16,9 +16,7 @@ type ItemGroup<T = any> = {
 	children: typeof(__children),
 }
 
-export type Self<T = any> = ItemGroup<T>
-
-__children = {(nil::any)::ItemGroup}
+__children = {(nil::any)::ItemGroup<any>}
 function __extend<T>(self: any, new_cleanup_handler: (T) -> (), items: {T}?): ItemGroup<T> return nil::any end
 
 local function group_add(self: ItemGroup, item: any)
@@ -48,19 +46,18 @@ local function group_free(self: ItemGroup)
 	local items = self.items
 	local cleanup_handler = self.cleanup_handler
 	local children = self.children
-
+	
+	for _, child: any in children do
+		child:free()
+	end
 	for _, item in items do
 		cleanup_handler(item)
 	end
 	table.clear(items)
-
-	for _, child: any in children do
-		child:free()
-	end
 end
 
-local function group_extend<A>(self: ItemGroup, new_cleanup_handler: any)
-	local new = create(new_cleanup_handler)
+local function group_extend<A>(self: ItemGroup, new_cleanup_handler: any, items)
+	local new = create(new_cleanup_handler, items)
 	table.insert(self.children, new)
 	return new
 end
